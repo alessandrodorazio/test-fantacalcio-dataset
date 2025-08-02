@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Classification by Skin Tone</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .search-container {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        #searchInput {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex: 1;
+            font-size: 16px;
+        }
+        
+        .sort-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .sort-btn {
+            padding: 8px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .sort-btn:hover {
+            background: #0056b3;
+        }
+        
+        .sort-btn.active {
+            background: #28a745;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .player-photo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #ddd;
+        }
+        
+        .position {
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .score {
+            font-weight: bold;
+            color: #28a745;
+        }
+        
+        .no-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .stats {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Player Classification by Skin Tone</h1>
+        
+        <div class="stats">
+            <span id="totalCount">Total Players: 0</span> | 
+            <span id="visibleCount">Showing: 0</span>
+        </div>
+        
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search by player name...">
+            <div class="sort-buttons">
+                <button class="sort-btn" onclick="sortTable('position')">Sort by Position</button>
+                <button class="sort-btn" onclick="sortTable('name')">Sort by Name</button>
+                <button class="sort-btn active" onclick="sortTable('score')">Sort by Score</button>
+            </div>
+        </div>
+        
+        <table id="playersTable">
+            <thead>
+                <tr>
+                    <th>Position</th>
+                    <th>Photo</th>
+                    <th>Player Name</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- Data will be populated here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let playersData = [];
+        let currentSort = 'score';
+        let sortDirection = 'desc';
+
+        // Load CSV data
+        async function loadData() {
+            try {
+                const response = await fetch('classifica_skin_tone.csv');
+                const csvText = await response.text();
+                
+                const lines = csvText.trim().split('\n');
+                const headers = lines[0].split(',');
+                
+                playersData = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const row = lines[i].split(',');
+                    if (row.length >= 3 && row[1].trim()) {
+                        playersData.push({
+                            position: parseInt(row[0]),
+                            name: row[1].trim(),
+                            score: parseFloat(row[2])
+                        });
+                    }
+                }
+                
+                updateStats();
+                renderTable();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('tableBody').innerHTML = 
+                    '<tr><td colspan="4">Error loading data. Please ensure classifica_skin_tone.csv is in the same directory.</td></tr>';
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('totalCount').textContent = `Total Players: ${playersData.length}`;
+        }
+
+        function renderTable() {
+            const tableBody = document.getElementById('tableBody');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            let filteredData = playersData.filter(player => 
+                player.name.toLowerCase().includes(searchTerm)
+            );
+            
+            // Sort data
+            filteredData.sort((a, b) => {
+                let aVal, bVal;
+                
+                switch (currentSort) {
+                    case 'position':
+                        aVal = a.position;
+                        bVal = b.position;
+                        break;
+                    case 'name':
+                        aVal = a.name.toLowerCase();
+                        bVal = b.name.toLowerCase();
+                        break;
+                    case 'score':
+                        aVal = a.score;
+                        bVal = b.score;
+                        break;
+                }
+                
+                if (sortDirection === 'asc') {
+                    return aVal > bVal ? 1 : -1;
+                } else {
+                    return aVal < bVal ? 1 : -1;
+                }
+            });
+            
+            document.getElementById('visibleCount').textContent = `Showing: ${filteredData.length}`;
+            
+            tableBody.innerHTML = filteredData.map(player => {
+                const imageName = player.name.replace(/\s+/g, '_');
+                const imagePath = `dataset_test/${imageName}.jpg`;
+                const imagePath2 = `dataset_test/${imageName}.png`;
+                const imagePath3 = `dataset_test/${imageName}.jpeg`;
+                
+                return `
+                    <tr>
+                        <td class="position">#${player.position}</td>
+                        <td>
+                            <img src="${imagePath}" alt="${player.name}" class="player-photo" 
+                                 onerror="this.onerror=null; this.src='${imagePath2}'; this.onerror=function(){this.onerror=null; this.src='${imagePath3}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};};">
+                            <div class="no-image" style="display: none;">No Image</div>
+                        </td>
+                        <td>${player.name.replace(/_/g, ' ')}</td>
+                        <td class="score">${player.score.toFixed(2)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function sortTable(column) {
+            // Update active button
+            document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (currentSort === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort = column;
+                sortDirection = column === 'score' ? 'desc' : 'asc';
+            }
+            
+            renderTable();
+        }
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', renderTable);
+
+        // Load data when page loads
+        window.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
